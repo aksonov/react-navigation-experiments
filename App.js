@@ -25,17 +25,12 @@ const instructions = Platform.select({
 });
 
 type Props = {};
-class Store {
-  @observable
-  navigation = Node.create({
-    routeName: 'statem',
-    props: { globalA: 1 },
-    index: 1,
-    routes: [{ key: 'b', routeName: 'b' }, { key: 'a', routeName: 'a' }]
-  });
-}
-
-const store = new Store();
+const navigation = Node.create({
+  routeName: 'statem',
+  props: { globalA: 1 },
+  index: 1,
+  routes: [{ key: 'b', routeName: 'b' }, { key: 'a', routeName: 'a' }]
+});
 
 class First extends Component {
   render() {
@@ -65,30 +60,24 @@ class Second extends Component {
 
 const descriptors = {
   a: {
-    navigation: store.navigation,
+    navigation,
     options: {},
     getComponent: () => First
   },
   b: {
-    navigation: store.navigation,
+    navigation,
     options: {},
     getComponent: () => Second
   }
 };
 
-@inject('store')
+@inject('navigation')
 @observer
 class Root extends Component<Props> {
   render() {
-    console.log(
-      'RENDER ROOT',
-      JSON.stringify(this.props.store.navigation.state)
-    );
+    console.log('RENDER ROOT', JSON.stringify(this.props.navigation.state));
     return (
-      <StackView
-        navigation={this.props.store.navigation}
-        descriptors={descriptors}
-      />
+      <StackView navigation={this.props.navigation} descriptors={descriptors} />
     );
   }
 }
@@ -96,7 +85,7 @@ class Root extends Component<Props> {
 export default class App extends Component<Props> {
   render() {
     return (
-      <Provider store={store}>
+      <Provider navigation={navigation}>
         <Root />
       </Provider>
     );
