@@ -76,8 +76,12 @@ const descriptors = {
 class Root extends Component<Props> {
   render() {
     console.log('RENDER ROOT', JSON.stringify(this.props.navigation.state));
+    const state = this.props.navigation.state;
     return (
-      <StackView navigation={this.props.navigation} descriptors={descriptors} />
+      <StackView
+        navigation={{ goBack: this.props.navigation.goBack, state }}
+        descriptors={descriptors}
+      />
     );
   }
 }
