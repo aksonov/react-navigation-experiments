@@ -19,12 +19,25 @@
     "react-navigation": "https://github.com/react-navigation/react-navigation"
   },
   "devDependencies": {
-    "babel-jest": "22.4.1",
+    "babel-jest": "^22.4.1",
     "babel-preset-react-native": "4.0.0",
     "jest": "22.4.2",
-    "react-test-renderer": "^16.3.0-alpha.1"
+    "mocha": "^5.0.4",
+    "react-test-renderer": "^16.3.0-alpha.1",
+    "ts-node": "^5.0.1",
+    "typescript": "^2.7.2"
   },
   "jest": {
-    "preset": "react-native"
+    "preset": "react-native",
+    "verbose": true,
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "transformIgnorePatterns": ["node_modules/(?!react-native|native-base|react-navigation|react-native-fabric)"],
+
+    "globals": {
+      "NODE_ENV": "test"
+    },
+    "moduleFileExtensions": ["js", "jsx"]
   }
 }
