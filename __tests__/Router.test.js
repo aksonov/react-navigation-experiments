@@ -1,4 +1,4 @@
-import NavigationStore from '../src/Router'
+import {create} from '../src/Router'
 import {when} from 'mobx'
 
 async function waitFor(condition) {
@@ -19,8 +19,28 @@ async function waitFor(condition) {
     )
   })
 }
-const navigation = new NavigationStore()
-const statem = navigation.create({
+// const statem = create({
+//   routeName: 'statem',
+//   props: {globalA: 1},
+//   type: 'tabs',
+//   children: {
+//     stack: {
+//       routeName: 'stack',
+//       children: {a1: {routeName: 'a1'}, b1: {routeName: 'b1'}, c1: {routeName: 'c1'}},
+//       a: {routeName: 'a'},
+//       b: {
+//         routeName: 'b',
+//         success: 'a',
+//         onEnter: () => {
+//           console.log('ENTER B')
+//           return new Promise(resolve => setTimeout(() => resolve(true), 500))
+//         }
+//       },
+//       c: {routeName: 'c', children: {a3: {routeName: 'a3'}, b3: {routeName: 'b3'}}, props: {a: 1}}
+//     }
+//   }
+// })
+const statem = create({
   routeName: 'statem',
   props: {globalA: 1},
   type: 'tabs',

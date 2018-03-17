@@ -7,7 +7,7 @@
 import React, {Component} from 'react'
 import {Platform, TouchableOpacity, StyleSheet, Text, View} from 'react-native'
 import {StackView, TabView, TabBarBottom} from 'react-navigation'
-import Statem from './src/Router'
+import {create} from './src/Router'
 import {Provider, inject, observer} from 'mobx-react/native'
 import {observable} from 'mobx'
 import First from './src/First'
@@ -29,8 +29,7 @@ class Second extends Component {
   }
 }
 type Props = {}
-const statem = new Statem()
-const navigation = statem.create({
+const navigation = create({
   routeName: 'statem',
   props: {globalB: 1, globalA: 123},
   wrapBy: createContainerWrapper,
