@@ -8,7 +8,7 @@ import React, {Component} from 'react'
 import {Platform, TouchableOpacity, StyleSheet, Text, View} from 'react-native'
 import {StackView, TabView, TabBarBottom} from 'react-navigation'
 import {create} from './src/Router'
-import {Provider, inject, observer} from 'mobx-react/native'
+import {observer} from 'mobx-react/native'
 import {observable} from 'mobx'
 import First from './src/First'
 import * as _ from 'lodash'
@@ -58,7 +58,6 @@ const navigation = create({
       routeName: 'a',
       props: {a: 3, title: 'aaa'},
       options: {
-        hideNavBar: false,
         header: props => {
           const route = props.scene.route.routeName
           const descriptor = navigation.routesByName[route].inheritedDescriptor
@@ -70,8 +69,9 @@ const navigation = create({
       },
       children: [
         {
-          options: {},
+          options: {hideNavBar: false},
           routeName: 'a1',
+          props: {globalA: 222},
           getContentComponent: () => First,
           getComponent: () => RouterView
         },

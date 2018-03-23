@@ -10,7 +10,9 @@ export default class First extends Component {
     return (
       <View style={styles.container}>
         <TouchableOpacity onPress={() => (this.title = 'abcd')}>
-          <Text style={styles.instructions}>Change title to abcd! {this.props.globalA}</Text>
+          <Text style={styles.instructions}>
+            Change title to abcd!! {JSON.stringify(this.props.navigation.props)} {this.props.globalA}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => this.props.navigation.setDescriptor({ab: 1231232})}>
           <Text style={styles.instructions}>Change title to abcd: {this.props.globalB}</Text>

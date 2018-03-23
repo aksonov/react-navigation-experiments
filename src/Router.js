@@ -89,7 +89,7 @@ export const Router = types
   }))
   .views(self => ({
     get allProps() {
-      return {...self.parent.allProps, ...self.props.toJS()}
+      return {...self.parent.allProps, ...getSnapshot(self.props)}
     },
     get inheritedDescriptor() {
       const parentDescriptor = {...self.parent.inheritedDescriptor}
@@ -97,7 +97,7 @@ export const Router = types
       const res = {}
       _.merge(res, parentDescriptor)
       _.merge(res, self.descriptor)
-      console.log('MERGED DESC:', self.routeName, res)
+      //console.log('MERGED DESC:', self.routeName, res)
       return res
     },
     get descriptors() {
@@ -245,7 +245,6 @@ export const Router = types
       const node = getType(scene).create({...getSnapshot(scene), key: undefined})
       node.init({...scene.handlers, ...scene.descriptor})
       node.refresh(props)
-      console.log('CLONE:', getSnapshot(node), getSnapshot(scene))
       return node
     },
     navigate: (routeName, props = {}) => {
