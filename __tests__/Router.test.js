@@ -43,7 +43,7 @@ async function waitFor(condition) {
 const statem = create({
   routeName: 'statem',
   props: {globalA: 1},
-  type: 'tabs',
+  tabs: true,
   children: [
     {routeName: 'stack', children: [{routeName: 'a1'}, {routeName: 'b1'}, {routeName: 'c1'}]},
     {routeName: 'a'},
@@ -80,9 +80,22 @@ it('jump 3 using shortcut method', () => {
 it('jump to b1 using shortcut method', () => {
   statem.b1()
   expect(statem.index).toEqual(0)
+  expect(statem.routesByName.stack.index).toEqual(1)
   expect(statem.routesByName.c.isFocused).toEqual(false)
   expect(statem.routesByName.stack.isFocused).toEqual(true)
+  console.log('ROUTESBYNAME', JSON.stringify(statem))
+  console.log('ROUTESBYNAME', JSON.stringify(statem.routesByName))
+  console.log('ROUTESBYNAME', statem.currentScene.routeName)
+  console.log('ROUTESBYNAME', statem.currentScene.initialized)
   expect(statem.routesByName.b1.isFocused).toEqual(true)
+})
+it('duplicate navigate', () => {
+  statem.b1()
+  expect(statem.routesByName.stack.index).toEqual(1)
+})
+it('non-duplicate navigate (different param', () => {
+  statem.b1({a: 2})
+  expect(statem.routesByName.stack.index).toEqual(2)
 })
 it('jump 2', () => {
   statem.navigate('b') // but it should redirect to 'a'

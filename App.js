@@ -32,9 +32,10 @@ type Props = {}
 const navigation = create({
   routeName: 'statem',
   props: {globalB: 1, globalA: 123},
-  wrapBy: createContainerWrapper,
-  getComponent: () => TabView,
+  getContentComponent: () => TabView,
+  getComponent: () => Container,
   index: 1,
+  tabs: true,
   options: {
     navigationConfig: {tabBarComponent: TabBarBottom, tabBarPosition: 'bottom'},
     header: props => {
@@ -45,18 +46,41 @@ const navigation = create({
   children: [
     {
       key: 'b',
-      wrapBy: createWrapper,
       routeName: 'b',
-      getComponent: () => Second
+      getContentComponent: () => Second,
+      getComponent: () => RouterView
     },
     {
       key: 'a',
-      wrapBy: createWrapper,
-      getComponent: () => First,
+      getContentComponent: () => StackView,
+      getComponent: () => Container,
       ab: 'abcde',
       routeName: 'a',
       props: {a: 3, title: 'aaa'},
-      children: [{routeName: 'a1'}, {routeName: 'a2'}]
+      options: {
+        hideNavBar: false,
+        header: props => {
+          const route = props.scene.route.routeName
+          const descriptor = navigation.routesByName[route].inheritedDescriptor
+          if (descriptor.options.hideNavBar) {
+            return null
+          }
+          return <Header descriptor={descriptor} {...navigation.routesByName[route].allProps} {...props} />
+        }
+      },
+      children: [
+        {
+          options: {},
+          routeName: 'a1',
+          getContentComponent: () => First,
+          getComponent: () => RouterView
+        },
+        {
+          routeName: 'a2',
+          getContentComponent: () => First,
+          getComponent: () => RouterView
+        }
+      ]
     }
   ]
 })
@@ -72,36 +96,46 @@ const Header = observer(({navigation, descriptor, title}) => {
   )
 })
 
-function createWrapper(navigation, Component) {
-  return class RouterView extends React.Component {
-    componentWillUnmount() {
-      navigation.setDescriptor({ref: undefined})
+class RouterView extends React.Component {
+  componentWillUnmount() {
+    this.props.navigation.setDescriptor({ref: undefined})
+  }
+  shouldComponentUpdate(props, state) {
+    return false
+  }
+  render() {
+    const {navigation} = this.props
+    const Component = navigation.descriptor.getContentComponent(this.props.navigation)
+    if (!Component) {
+      throw 'No getContentComponent is defined'
     }
-    shouldComponentUpdate(props, state) {
-      return false
-    }
-    render() {
-      return <Component ref={ref => navigation.setDescriptor({ref})} descriptor={navigation.descriptor} {...navigation.allProps} {...this.props} />
-    }
+    return <Component ref={ref => navigation.setDescriptor({ref})} descriptor={navigation.descriptor} {...navigation.allProps} {...this.props} />
   }
 }
 
-function createContainerWrapper(navigation, Component) {
-  return observer(props => (
-    <Component
-      navigation={props.navigation.snapshot}
-      navigationConfig={props.navigation.descriptor.options.navigationConfig}
-      // descriptors={descriptors}
-      descriptors={props.navigation.descriptors}
-    />
-  ))
+@observer
+class Container extends React.Component {
+  render() {
+    const {navigation} = this.props
+    const Component = navigation.descriptor.getContentComponent(this.props.navigation)
+    if (!Component) {
+      throw 'No getContentComponent is defined'
+    }
+    return (
+      <Component
+        navigation={navigation.snapshot || navigation}
+        navigationConfig={navigation.descriptor.options.navigationConfig}
+        // descriptors={descriptors}
+        descriptors={navigation.descriptors}
+      />
+    )
+  }
 }
 
-export default class App extends Component<Props> {
+export default class Root extends React.Component {
   render() {
-    console.log('NAV:', navigation)
-    const Root = navigation.descriptor.getComponent()
-    return <Root navigation={navigation} />
+    const Component = navigation.descriptor.getComponent()
+    return <Component navigation={navigation} />
   }
 }
 

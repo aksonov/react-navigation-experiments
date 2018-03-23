@@ -1,36 +1,60 @@
-import {types, getParent, destroy, getRoot, detach, IModelType, IType, isStateTreeNode, IExtendedObservableMap, getSnapshot, hasParent} from 'mobx-state-tree'
+import {types, getParent, destroy, getType, clone, getRoot, detach, IModelType, IType, isStateTreeNode, IExtendedObservableMap, getSnapshot, hasParent} from 'mobx-state-tree'
 import {IObservableArray, reaction} from 'mobx'
 import * as _ from 'lodash'
 
 const COMPLETE_TRANSITION = 'Navigation/COMPLETE_TRANSITION'
-export const STACK_TYPE = 'stack'
 
-const dontInheritKeys = ['getComponent', 'ref', 'options']
+const dontInheritKeys = ['getComponent', 'ref']
 let uniqueBaseId = `id-${Date.now()}`
 let uuidCount = 0
 
 function generateKey() {
   return `${uniqueBaseId}-${uuidCount++}`
 }
-function isEqual(snapshot, route) {
-  const res = _.cloneDeep(getSnapshot(route))
-  delete res.key
-  delete res.type
-  return _.isEqual(snapshot, res)
+function isEqual(a, b) {
+  console.log('IS EQUAL:', a, b, _.isEqual(a, b))
+  return _.isEqual(a, b)
 }
-
 function getRouteNames(routeName, routes = []) {
   return [routeName].concat(_.flatMap(routes, ({routeName, children}) => getRouteNames(routeName, children)))
 }
 
+// export const LeafScene = types.model('LeafScene', {
+//   key: types.optional(types.identifier(types.string), () => generateKey()),
+//   props: types.optional(types.map(types.frozen), {}),
+//   routeName: types.string,
+//   isTransitioning: false
+// })
+
+// export const ContainerScene = LeafScene.props({
+//   index: 0,
+//   routes: types.array(types.late(() => Scene))
+// }).named('ContainerScene')
+
+// export const Scene = types.union(LeafScene, ContainerScene)
+
+// export const LeafRoute = types.model('LeafRoute', {
+//   routeName: types.identifier(types.string),
+//   scenes: types.optional(types.map(Scene), {}),
+//   props: types.optional(types.map(types.frozen), {})
+// })
+
+// export const ContainerRoute = LeafRoute.props({
+//   children: types.map(types.late(() => Route)),
+//   tabs: false
+// })
+
+// export const Route = types.union(LeafRoute, ContainerRoute)
+
 export const Router = types
   .model('Router', {
-    key: types.optional(types.identifier(types.string), () => generateKey()),
+    key: types.optional(types.string, () => generateKey()),
     routeName: types.string,
     props: types.optional(types.map(types.frozen), {}),
-    type: STACK_TYPE,
+    tabs: false,
     index: types.maybe(types.number),
     routes: types.maybe(types.array(types.late(() => Router))),
+    scenes: types.maybe(types.map(types.late(() => Router))),
     isTransitioning: false
   })
   .volatile(self => ({
@@ -38,9 +62,8 @@ export const Router = types
       onEnter: () => console.log('Enter state: ' + self.key + ' ' + self.routeName),
       onExit: () => console.log('Exit state: ' + self.key + ' ' + self.routeName)
     },
-    descriptor: {},
+    descriptor: {options: {}},
     initialized: false,
-    children: {},
     detached: []
   }))
   .views(self => ({
@@ -55,6 +78,11 @@ export const Router = types
       self.routes && self.routes.forEach(route => Object.assign(res, route.routesByName))
       return res
     },
+    get scenesByName() {
+      const res = {[self.routeName]: self}
+      self.scenes && self.scenes.keys().forEach(key => Object.assign(res, self.scenes.get(key).scenesByName))
+      return res
+    },
     get parent() {
       return hasParent(self) ? getParent(getParent(self)) : {}
     }
@@ -66,12 +94,15 @@ export const Router = types
     get inheritedDescriptor() {
       const parentDescriptor = {...self.parent.inheritedDescriptor}
       dontInheritKeys.forEach(key => delete parentDescriptor[key])
-      return {...parentDescriptor, ...self.descriptor}
+      const res = {}
+      _.merge(res, parentDescriptor)
+      _.merge(res, self.descriptor)
+      console.log('MERGED DESC:', self.routeName, res)
+      return res
     },
     get descriptors() {
       const map = {}
-
-      self.routes.forEach(obj => (map[obj.key] = {navigation: obj.snapshot, ...self.inheritedDescriptor, ...obj.descriptor}))
+      self.routes && self.routes.forEach(obj => (map[obj.key] = {navigation: obj.snapshot, ...obj.inheritedDescriptor}))
       return map
     },
     get currentScene() {
@@ -88,7 +119,7 @@ export const Router = types
   .actions(self => {
     return {
       addChild: child => {
-        self.children[child.routeName] = child
+        self.scenes.set(child.routeName, createScene(child))
       },
       postProcessSnapshot: snapshot => {
         const result = {}
@@ -106,21 +137,14 @@ export const Router = types
           .filter(key => ['onEnter', 'onExit', 'success', 'failure'].includes(key))
           .forEach(key => (self.handlers[key] = props[key]))
         Object.keys(props)
-          .filter(key => typeof props[key] === 'function' || ['wrapBy', 'getComponent', 'options'].includes(key))
+          .filter(key => typeof props[key] === 'function' || key === 'options')
           .forEach(key => (self.descriptor[key] = props[key]))
-        if (self.descriptor.wrapBy) {
-          if (!self.descriptor.getComponent) {
-            throw 'No getComponent is defined'
-          }
-          const Wrapper = self.descriptor.wrapBy(self, self.descriptor.getComponent())
-          self.descriptor.getComponent = () => Wrapper
-        }
+
         if (children) {
-          // TODO store children as map <routeName, obj>
-          // set only first route for stack
-          self.routes = children.map(createScene)
-          children.forEach(child => self.addChild(createScene(child)))
+          self.scenes = {}
           self.index = index || 0
+          self.routes = children.filter((scene, i) => self.tabs || self.index >= i).map(createScene)
+          children.forEach(self.addChild)
           if (initialRouteName) {
             self.index = self.routes.findIndex(route => route.routeName === initialRouteName)
             if (self.index === -1) {
@@ -150,7 +174,6 @@ export const Router = types
                   }
                 }
               }
-              console.log('HANDLERS:', focused + ' ' + self.routeName)
             } catch (e) {
               console.error('ERROR running handler', e)
             }
@@ -177,20 +200,17 @@ export const Router = types
         self.index = index
       },
       push: s => {
-        const snapshot = _.cloneDeep(s)
-        if (!snapshot.props) {
-          snapshot.props = {}
-        }
-        // don't add action with the same props
-        if (!self.routes.find(r => r.key === snapshot.key || isEqual(snapshot, r))) {
-          self.routes.push(this.createScene(snapshot))
+        // don't add action with the same props or key
+        if (!self.routes.find(r => r.key === s.key || (s.routeName === r.routeName && isEqual(s.props || {}, getSnapshot(r.props))))) {
+          self.routes.push(isStateTreeNode(s) ? s : this.createScene(s))
           self.index = self.routes.length - 1
           self.isTransitioning = true
-          return true
           if (hasParent(self)) {
             self.parent.navigate(self.routeName)
           }
+          return true
         } else {
+          console.log('DUPLICATE! IGNORE PUSH')
           return false
         }
       },
@@ -221,23 +241,30 @@ export const Router = types
         self.completeTransition()
       }
     },
+    clone: (scene, props) => {
+      const node = getType(scene).create({...getSnapshot(scene), key: undefined})
+      node.init({...scene.handlers, ...scene.descriptor})
+      node.refresh(props)
+      console.log('CLONE:', getSnapshot(node), getSnapshot(scene))
+      return node
+    },
     navigate: (routeName, props = {}) => {
-      const index = self.routes ? self.routes.findIndex(r => r.routeName === routeName) : -1
-      if (index !== -1) {
-        self.jump(index)
-        return true
-      } else {
-        if (!self.routes) {
-          return getRoot(self).navigate(routeName, props)
-        }
-        for (let i = 0; i < self.routes.length; i++) {
-          if (self.routes[i].navigate(routeName, props)) {
-            // make current node active too
-            console.log('SUCCESS NAVIGATE TO:', routeName, self.routeName)
-            return true
+      if (self.scenes && self.scenes.get(routeName)) {
+        const scene = self.scenes.get(routeName)
+        if (self.tabs) {
+          self.jump(self.routes.findIndex(r => r.routeName === routeName))
+        } else {
+          if (!self.routes.find(r => r.key === scene.key || (scene.routeName === r.routeName && isEqual({...getSnapshot(scene.props), ...props}, getSnapshot(r.props))))) {
+            self.push(self.clone(scene, props))
           }
         }
-        throw `Cannot find ${routeName} scene`
+      } else {
+        const root = getRoot(self)
+        if (!root.scenesByName[routeName]) {
+          throw `Cannot find ${routeName} scene`
+        }
+        const parentName = root.scenesByName[routeName].parent.routeName
+        root.routesByName[parentName].navigate(routeName, props)
       }
     },
     replace: snapshot => {
@@ -257,8 +284,10 @@ export const Router = types
         push: self.parent.push,
         pop: self.parent.pop,
         props: self.props,
-        setParams: self.setParams,
+        refresh: self.refresh,
+        allProps: self.allProps,
         descriptor: self.inheritedDescriptor,
+        descriptors: self.descriptors,
         setDescriptor: self.setDescriptor,
         routeName: self.routeName,
         dispatch: self.dispatch,
