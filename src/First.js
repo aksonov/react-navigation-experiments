@@ -20,6 +20,9 @@ export default class First extends Component {
         <TouchableOpacity onPress={() => this.props.navigation.pop()}>
           <Text style={styles.instructions}>POP</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => this.props.navigation.toggleDrawer()}>
+          <Text style={styles.instructions}>DRAWER</Text>
+        </TouchableOpacity>
       </View>
     )
   }

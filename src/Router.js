@@ -232,10 +232,9 @@ export const Router = types
   .actions(self => ({
     goBack: () => {
       self.pop()
-      console.log('STATE:', JSON.stringify(self.state))
     },
     dispatch: ({type, key, ...props}) => {
-      console.log('DISPATCH', type, key)
+      console.log('DISPATCH', type, key, self.routeName)
       if (type === COMPLETE_TRANSITION) {
         console.log('COMPLETE TRANSITION', key, self.key)
         self.completeTransition()

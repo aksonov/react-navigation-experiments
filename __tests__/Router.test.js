@@ -1,4 +1,4 @@
-import {create} from '../src/Router'
+import {create} from '../src/Route'
 import {when} from 'mobx'
 
 async function waitFor(condition) {

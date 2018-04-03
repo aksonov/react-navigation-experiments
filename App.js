@@ -6,8 +6,8 @@
 
 import React, {Component} from 'react'
 import {Platform, TouchableOpacity, StyleSheet, Text, View} from 'react-native'
-import {StackView, TabView, TabBarBottom} from 'react-navigation'
-import {create} from './src/Router'
+import {StackView, TabView, DrawerView, TabBarBottom} from 'react-navigation'
+import {create} from './src/Route'
 import {observer} from 'mobx-react/native'
 import {observable} from 'mobx'
 import First from './src/First'
@@ -28,8 +28,7 @@ class Second extends Component {
     )
   }
 }
-type Props = {}
-const navigation = create({
+const tabs = {
   routeName: 'statem',
   props: {globalB: 1, globalA: 123},
   getContentComponent: () => TabView,
@@ -37,7 +36,7 @@ const navigation = create({
   index: 1,
   tabs: true,
   options: {
-    navigationConfig: {tabBarComponent: TabBarBottom, tabBarPosition: 'bottom'},
+    navigationConfig: {swipeEnabled: false, tabBarComponent: TabBarBottom, tabBarPosition: 'bottom'},
     header: props => {
       const route = props.scene.route.routeName
       return <Header descriptor={navigation.routesByName[route].inheritedDescriptor} {...navigation.routesByName[route].allProps} {...props} />
@@ -52,8 +51,8 @@ const navigation = create({
     },
     {
       key: 'a',
-      getContentComponent: () => StackView,
-      getComponent: () => Container,
+      getContentComponent: () => First,
+      getComponent: () => RouterView,
       ab: 'abcde',
       routeName: 'a',
       props: {a: 3, title: 'aaa'},
@@ -83,8 +82,19 @@ const navigation = create({
       ]
     }
   ]
-})
+}
 
+// const navigation = create({
+//   routeName: 'drawer',
+//   options: {
+//     navigationConfig: {drawerWidth: 200, tabBarComponent: TabBarBottom, tabBarPosition: 'bottom', contentComponent: First}
+//   },
+//   getComponent: () => Container,
+//   getContentComponent: () => DrawerView,
+//   isDrawerOpen: false,
+//   routes: [tabs]
+// })
+const navigation = create(tabs)
 const Header = observer(({navigation, descriptor, title}) => {
   return (
     <View style={{backgroundColor: 'white', height: 70, alignItems: 'center', justifyContent: 'center'}}>

@@ -1,8 +1,23 @@
-import {types, getParent, destroy, getType, clone, getRoot, detach, IModelType, IType, isStateTreeNode, IExtendedObservableMap, getSnapshot, hasParent} from 'mobx-state-tree'
+import {
+  types,
+  getParent,
+  isAlive,
+  destroy,
+  getType,
+  clone,
+  getRoot,
+  detach,
+  IModelType,
+  IType,
+  isStateTreeNode,
+  IExtendedObservableMap,
+  getSnapshot,
+  hasParent
+} from 'mobx-state-tree'
 import {IObservableArray, reaction} from 'mobx'
 import * as _ from 'lodash'
+import {COMPLETE_TRANSITION, SET_PARAMS, NAVIGATE} from './Route'
 
-const COMPLETE_TRANSITION = 'Navigation/COMPLETE_TRANSITION'
 const dontInheritKeys = ['getComponent', 'ref']
 let uniqueBaseId = `id-${Date.now()}`
 let uuidCount = 0
@@ -59,6 +74,23 @@ export const Node = types
     },
     get current() {
       return self
+    },
+    get snapshot() {
+      return {
+        goBack: self.pop,
+        navigate: self.navigate,
+        push: self.parent.push,
+        pop: self.parent.pop,
+        props: self.props,
+        refresh: self.refresh,
+        allProps: self.allProps,
+        descriptor: self.inheritedDescriptor,
+        descriptors: self.descriptors,
+        setDescriptor: self.setDescriptor,
+        routeName: self.routeName,
+        dispatch: self.dispatch,
+        state: getSnapshot(self)
+      }
     }
   }))
   .actions(self => {
@@ -78,15 +110,33 @@ export const Node = types
       completeTransition: () => {
         self.isTransitioning = false
       },
-      dispatch: ({type, key, ...props}) => {
+      refresh: (props = {}) => {
+        Object.keys(props).forEach(key => self.props.set(key, props[key]))
+      },
+      setDescriptor: (descriptor = {}) => {
+        self.descriptor = {...self.descriptor, ...descriptor}
+      },
+      dispatch: ({type, key, routeName, ...props}) => {
+        console.log('NODE DISPATCH', self.routeName, routeName, props)
+        if (key && key !== self.key) {
+          return false
+        }
+        if (routeName && routeName !== self.routeName) {
+          return false
+        }
         if (type === COMPLETE_TRANSITION) {
-          console.log('COMPLETE TRANSITION', key, self.key)
           self.completeTransition()
+        } else if (type === SET_PARAMS) {
+          // if no key and routeName is specified and it is not current scene, return
+          if (!key && !routeName && getRoot(self).currentScene.key !== self.key) {
+            return false
+          }
+          self.refresh(props)
         }
       },
       afterCreate: () => {
         handler = reaction(
-          () => self.isFocused,
+          () => isAlive(self) && self.isFocused,
           async focused => {
             try {
               let res = focused ? self.handlers.onEnter(self.props) : self.handlers.onExit(self.props)
@@ -95,10 +145,10 @@ export const Node = types
               }
               if (focused) {
                 if (res && self.handlers.success) {
-                  self.navigate(self.handlers.success)
+                  getRoot(self).dispatch({type: NAVIGATE, routeName: self.handlers.success})
                 } else {
                   if (self.handlers.failure) {
-                    self.navigate(self.handlers.failure)
+                    getRoot(self).dispatch({type: NAVIGATE, routeName: self.handlers.success})
                   }
                 }
               }
